@@ -1,11 +1,19 @@
 #!/usr/bin/php
 <?php
 /**
- * Spider
+ * Simple Spider
+ *
+ * @version 0.5.1
+ * @author Micah Blu
  */
 
 include "simple_html_dom.php";
 
+/**
+ * Declare Filter & Actions global scope variables & functions
+ *
+ * @since 0.5.0
+ */
 $filters = array();
 $actions = array();
 
@@ -41,34 +49,40 @@ function add_action($action, $hook){
 	$actions[$action][] = $hook;
 }
 
-
-class Spider{
+/**
+ * SimpleSpider Class
+ *
+ * @since 0.5.0
+ */
+class SimpleSpider{
 
 	private $queue = array();
-
 	private $queued = array();
-	
-	private $limit = 1000;
-
+	private $options = array();
 	private $contents = '';
-
 	private $response = array();
-
-	private $depth = 1;
-
 	private $iteration = 0;
-
 	private $curURL = '';
 
 	public function __construct($options=null){
-		if(is_array($options)){
-			
-			if( !isset($options['startwith']) || !$this->isURL($options['startwith']) ){
-				die("Startwith must be a valid URL");
-			}
 
-			$this->limit = isset($options['limit']) ? $options['limit'] : 100;
-			$this->curURL = $options['startwith'];
+		//set default options
+		$this->options = array(
+			"limit" => 10,
+			"depth" => 1,
+			"scope" => "local", // local, remote, all
+			"sleep" => 3,
+			"timeout" => 5,
+			"user_agent" => "Mozilla/5.0 (Windows; U; Windows NT 5.1; rv:1.7.3) Gecko/20041001 Firefox/0.10.1"
+		);
+
+		if(is_array($options)){
+			// set incoming options
+			foreach($options as $option => $value){
+				if(isset($options[$option])){
+					$this->options[$option] = $value;
+				}
+			}
 		}
 	}
 
@@ -77,27 +91,24 @@ class Spider{
 		if($this->iteration == 0){
 			do_action("crawl_begin");
 		}
-		
-		echo "Crawling $url\n";
 
 		array_push($this->queued, $url);
 
 		$urlparts = parse_url($url);
 
 		$this->curURL = $url;
-
-		$this->tld = end(explode(".", $urlparts['host']));
+		$strArray = explode(".", $urlparts['host']);
+		$this->tld = end($strArray);
 		$str = str_replace("." . $this->tld, "", $urlparts['host']);
 		$this->protocol = $urlparts['scheme'];
-		$this->domain = end(explode(".", $str));
+		$strArray = explode(".", $str);
+		$this->domain = end($strArray);
 
-		$ch = curl_init();	
+		$ch = curl_init();
 
-		$timeout = 5;
+		$cookie = tempnam("/tmp", "CURLCOOKIE");
 
-		$cookie = tempnam ("/tmp", "CURLCOOKIE");
-
-		curl_setopt( $ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows; U; Windows NT 5.1; rv:1.7.3) Gecko/20041001 Firefox/0.10.1" );
+		curl_setopt( $ch, CURLOPT_USERAGENT, $this->options['user_agent'] );
     curl_setopt( $ch, CURLOPT_URL, $url );
     curl_setopt( $ch, CURLOPT_COOKIEJAR, $cookie );
     curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
@@ -105,32 +116,39 @@ class Spider{
     curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
     curl_setopt( $ch, CURLOPT_AUTOREFERER, true );
     curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );    # required for https urls
-    curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, $timeout );
-    curl_setopt( $ch, CURLOPT_TIMEOUT, $timeout );
+    curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, $this->options['timeout'] );
+    curl_setopt( $ch, CURLOPT_TIMEOUT, $this->options['timeout'] );
     curl_setopt( $ch, CURLOPT_MAXREDIRS, 10 );
 
-		$this->contents = curl_exec( $ch );
+		$this->contents = curl_exec($ch);
 		$this->response = curl_getinfo($ch);
 
-		//free up resources
+		//close curl session and free up resources
 		curl_close($ch);
 
+		apply_filter("crawl_content", array($this->response, $this->contents));
+		
 		$this->iteration++;
 
-		if($this->iteration >= $this->limit){
+		//queue our links
+		$this->queueLinks();
+
+		do_action("queue_loaded");
+
+		echo $this->iteration . "\n";
+		
+		if($this->iteration == $this->options['limit']){
 			do_action("crawl_end");
 			exit;
 		}
 
-		$this->queueLinks();
-				
-		apply_filter("page_content", array($this->response, $this->contents));
-		//apply_filter("page_response", $this->response);
-
 		if(count($this->queue) > 0){
+			echo "going to next in queue\n";
 			$next = array_shift($this->queue);
 			$this->crawl($next);
-		}	
+		}else{
+			print_r($this->queue);
+		}
 	}
 
 	private function queueLinks(){
@@ -148,8 +166,6 @@ class Spider{
 				}
 			}
 		}
-
-		apply_filter("queued_links", $this->queue);
 	}
 
 	public function getContent(){
@@ -158,6 +174,10 @@ class Spider{
 
 	public function getResponse(){
 		return $this->response;
+	}
+
+	public function getQueue(){
+		return $this->queue;
 	}
 
 	private function isURL($str){
