@@ -24,7 +24,7 @@ function apply_filter($filter, $params){
 
 	if(count($filters) > 0 && isset($filters[$filter])){
 		foreach($filters[$filter] as $hook => $func){
-			call_user_func($func, $params);
+			return call_user_func($func, $params);
 		}
 	}
 }
@@ -136,16 +136,16 @@ class SimpleSpider{
 		//queue our links
 		$this->queueLinks();
 
+		$this->queue = apply_filter("the_queue", $this->queue);
+	
 		do_action("queue_loaded");
 		
 		if($this->iteration == $this->options['limit']){
 			do_action("crawl_end");
 			exit;
 		}
-
-
+		// Next..
 		if(count($this->queue) > 0){
-			echo "going to next in queue\n";
 			$next = array_shift($this->queue);
 			$this->crawl($next);
 		}else{
@@ -185,7 +185,6 @@ class SimpleSpider{
 	private function isURL($str){
 		if(preg_match("/^https?:\/\/(.*)/", $str)){
 			return true;
-
 		}else{
 			return false;
 		}
