@@ -5,6 +5,8 @@
  *
  * @version 0.5.1
  * @author Micah Blu
+ * @license GPLv3
+ * @copyright Micah Blu
  */
 
 include "simple_html_dom.php";
@@ -36,7 +38,7 @@ function add_filter($filter, $hook){
 function do_action($action){
 	global $actions;
 
-	if(count($actions) > 0){
+	if(count($actions) > 0 && isset($actions[$action])){
 		foreach($actions[$action] as $hook => $func){
 			call_user_func($func);
 		}
@@ -126,7 +128,8 @@ class SimpleSpider{
 		//close curl session and free up resources
 		curl_close($ch);
 
-		apply_filter("crawl_content", array($this->response, $this->contents));
+		do_action("page_content");
+		do_action("page_response");
 		
 		$this->iteration++;
 
@@ -134,13 +137,12 @@ class SimpleSpider{
 		$this->queueLinks();
 
 		do_action("queue_loaded");
-
-		echo $this->iteration . "\n";
 		
 		if($this->iteration == $this->options['limit']){
 			do_action("crawl_end");
 			exit;
 		}
+
 
 		if(count($this->queue) > 0){
 			echo "going to next in queue\n";
