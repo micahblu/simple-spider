@@ -24,7 +24,9 @@ function apply_filter($filter, $params){
 
 	if(count($filters) > 0 && isset($filters[$filter])){
 		foreach($filters[$filter] as $hook => $func){
-			return call_user_func($func, $params);
+			if(function_exists($func)){
+				return call_user_func($func, $params);
+			}
 		}
 	}
 }
@@ -40,7 +42,9 @@ function do_action($action){
 
 	if(count($actions) > 0 && isset($actions[$action])){
 		foreach($actions[$action] as $hook => $func){
-			call_user_func($func);
+			if(function_exists($func)){
+				call_user_func($func);
+			}
 		}
 	}
 }
@@ -73,7 +77,7 @@ class SimpleSpider{
 			"limit" => 10,
 			"depth" => 1,
 			"scope" => "local", // local, remote, all
-			"sleep" => 3,
+			"sleep" => 0,
 			"timeout" => 5,
 			"user_agent" => "Mozilla/5.0 (Windows; U; Windows NT 5.1; rv:1.7.3) Gecko/20041001 Firefox/0.10.1"
 		);
@@ -144,12 +148,16 @@ class SimpleSpider{
 			do_action("crawl_end");
 			exit;
 		}
+
+		//sleep?
+		if($this->options['sleep'] > 0){
+			sleep($this->options['sleep']);
+			do_action("spider_sleeping");
+		}
 		// Next..
 		if(count($this->queue) > 0){
 			$next = array_shift($this->queue);
 			$this->crawl($next);
-		}else{
-			print_r($this->queue);
 		}
 	}
 
@@ -170,6 +178,9 @@ class SimpleSpider{
 		}
 	}
 
+	public function getCurrentURL(){
+		return $this->curURL;
+	}
 	public function getContent(){
 		return $this->contents;
 	}

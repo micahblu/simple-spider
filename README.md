@@ -14,7 +14,7 @@ $spider = new SimpleSpider($options);
 
 
 add_action("queue_loaded", "print_queue");
-add_filter("the_queueu", "filter_queue");
+add_filter("the_queue", "filter_queue");
 
 function filter_queue($queue){
 	$newqueue = array();
