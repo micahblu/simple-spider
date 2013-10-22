@@ -187,7 +187,6 @@ class SimpleSpider{
 	public function getCurrentDomain(){
 		return $this->domain;
 	}
-
 	
 	public function getContent(){
 		return $this->contents;
