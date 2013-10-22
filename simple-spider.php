@@ -3,6 +3,8 @@
 /**
  * Simple Spider
  *
+ * A simple php spider engine that allows WordPress like hooks into the spider engine
+ *
  * @version 0.5.1
  * @author Micah Blu
  * @license GPLv3
