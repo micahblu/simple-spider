@@ -181,6 +181,12 @@ class SimpleSpider{
 	public function getCurrentURL(){
 		return $this->curURL;
 	}
+	
+	public function getCurrentDomain(){
+		return $this->domain;
+	}
+
+	
 	public function getContent(){
 		return $this->contents;
 	}
